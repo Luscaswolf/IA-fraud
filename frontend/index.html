@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fraud Investigation Platform</title>
+<style>
+  :root{
+    --canvas:#f6f7f9;
+    --side:#0e1626; --side-2:#18233b; --side-ink:#c7d0e0; --side-muted:#7c88a1;
+    --surface:#ffffff; --surface-2:#fafbfc;
+    --border:#e8eaf0; --border-2:#dfe2ea;
+    --ink:#0f172a; --ink-2:#475569; --muted:#8a94a6; --faint:#aab2c0;
+    --brand:#4f46e5; --brand-2:#6d5ef0; --brand-soft:#eef0fe;
+    --hi:#dc2626; --hi-bg:#fef2f2; --hi-br:#f8cfcf;
+    --md:#d97706; --md-bg:#fff8ec; --md-br:#f6ddab;
+    --lo:#16a34a; --lo-bg:#effcf3; --lo-br:#b9ecca;
+    --track:#eef1f5;
+    --sh-sm:0 1px 2px rgba(15,23,42,.06);
+    --sh:0 1px 3px rgba(15,23,42,.08),0 1px 2px rgba(15,23,42,.04);
+    --sh-lg:0 10px 30px rgba(15,23,42,.10),0 4px 8px rgba(15,23,42,.05);
+    --r:14px; --r-sm:9px;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--canvas);color:var(--ink);
+    font-family:"Segoe UI",-apple-system,BlinkMacSystemFont,Roboto,Helvetica,Arial,sans-serif;
+    font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  ::-webkit-scrollbar{width:10px;height:10px}
+  ::-webkit-scrollbar-thumb{background:#d7dbe3;border-radius:8px;border:2px solid var(--surface)}
+  .tnum{font-variant-numeric:tabular-nums}
+
+  .app{display:grid;grid-template-columns:248px 1fr;min-height:100vh}
+
+  /* ---------- Sidebar ---------- */
+  .side{background:var(--side);color:var(--side-ink);display:flex;flex-direction:column;
+    padding:22px 16px;position:sticky;top:0;height:100vh}
+  .logo{display:flex;align-items:center;gap:11px;padding:4px 8px 22px}
+  .logo .mk{width:34px;height:34px;border-radius:9px;
+    background:linear-gradient(135deg,var(--brand),var(--brand-2));
+    display:flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:13px;
+    box-shadow:0 4px 12px rgba(79,70,229,.4)}
+  .logo .t{font-weight:600;font-size:14.5px;color:#fff;letter-spacing:.2px;line-height:1.25}
+  .logo .t span{display:block;font-size:11px;font-weight:400;color:var(--side-muted)}
+  .nav-lbl{font-size:10.5px;text-transform:uppercase;letter-spacing:.8px;color:var(--side-muted);
+    padding:0 10px;margin:16px 0 8px}
+  .nav a{display:flex;align-items:center;gap:11px;padding:9px 11px;border-radius:9px;
+    color:var(--side-ink);text-decoration:none;font-size:13.5px;font-weight:500;cursor:pointer;transition:.12s}
+  .nav a:hover{background:var(--side-2)}
+  .nav a.active{background:var(--brand);color:#fff}
+  .nav a .ic{width:16px;height:16px;flex-shrink:0;opacity:.9}
+  .side .ds-pick{margin-top:6px;padding:0 2px}
+  .side select{width:100%;background:var(--side-2);color:#fff;border:1px solid #26324e;
+    border-radius:8px;padding:9px 10px;font-size:12.5px;outline:none}
+  .side-foot{margin-top:auto;padding:12px 10px 0;border-top:1px solid #1e2a44}
+  .stat-line{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--side-muted);padding:6px 0}
+  .dot{width:8px;height:8px;border-radius:50%;background:var(--faint)}
+  .dot.on{background:#34d399;box-shadow:0 0 0 3px rgba(52,211,153,.18)}
+  .dot.off{background:#f87171}
+
+  /* ---------- Main ---------- */
+  .main{padding:26px 30px 40px;min-width:0}
+  .head{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:22px}
+  .head h1{margin:0;font-size:22px;font-weight:700;letter-spacing:-.4px}
+  .head .crumb{font-size:13px;color:var(--muted);margin-top:3px}
+  .head .actions{display:flex;gap:10px}
+  .btn{font:inherit;font-size:13px;font-weight:500;border-radius:9px;padding:9px 14px;cursor:pointer;
+    border:1px solid var(--border-2);background:var(--surface);color:var(--ink-2);transition:.12s;box-shadow:var(--sh-sm)}
+  .btn:hover{border-color:#c7ccd8;color:var(--ink)}
+  .btn.primary{background:var(--brand);border-color:var(--brand);color:#fff;box-shadow:0 4px 12px rgba(79,70,229,.28)}
+  .btn.primary:hover{background:var(--brand-2)}
+
+  /* KPIs */
+  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:22px}
+  .kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);
+    padding:16px 18px;box-shadow:var(--sh);position:relative;overflow:hidden}
+  .kpi .lbl{font-size:12px;color:var(--muted);font-weight:500}
+  .kpi .val{font-size:27px;font-weight:700;letter-spacing:-.6px;margin-top:7px;line-height:1}
+  .kpi .sub{font-size:11.5px;color:var(--faint);margin-top:6px}
+  .kpi .accent{position:absolute;left:0;top:0;bottom:0;width:4px;border-radius:4px 0 0 4px}
+
+  /* content grid */
+  .grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,1fr);gap:18px;align-items:start}
+  .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r);box-shadow:var(--sh)}
+  .card > .ch{padding:15px 20px;border-bottom:1px solid var(--border);display:flex;
+    align-items:center;justify-content:space-between}
+  .card > .ch h2{margin:0;font-size:14px;font-weight:650}
+  .card > .ch .m{font-size:12px;color:var(--muted)}
+  .card .cb{padding:18px 20px}
+
+  /* Upload */
+  .drop{border:1.8px dashed var(--border-2);border-radius:12px;padding:26px 18px;text-align:center;
+    cursor:pointer;transition:.15s;background:var(--surface-2)}
+  .drop:hover,.drop.drag{border-color:var(--brand);background:var(--brand-soft)}
+  .drop .ico{width:44px;height:44px;margin:0 auto 12px;border-radius:11px;background:var(--brand-soft);
+    display:flex;align-items:center;justify-content:center}
+  .drop .ico svg{stroke:var(--brand)}
+  .drop .lead{font-weight:650;font-size:14px}
+  .drop .sub{font-size:12.5px;color:var(--muted);margin-top:3px}
+  .schema{margin-top:14px;font-size:12px;color:var(--muted);line-height:2}
+  .tag{display:inline-block;background:var(--surface-2);border:1px solid var(--border);border-radius:6px;
+    padding:2px 8px;margin:2px;font-family:ui-monospace,"Cascadia Code",Consolas,monospace;font-size:11.5px;color:var(--ink-2)}
+  .lnk{color:var(--brand);text-decoration:none;font-weight:600}
+  .lnk:hover{text-decoration:underline}
+
+  /* Table */
+  .twrap{max-height:560px;overflow:auto;border-radius:0 0 var(--r) var(--r)}
+  table{width:100%;border-collapse:collapse}
+  thead th{position:sticky;top:0;z-index:1;background:var(--surface-2);text-align:left;
+    font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);
+    padding:11px 16px;border-bottom:1px solid var(--border)}
+  tbody td{padding:12px 16px;border-bottom:1px solid var(--border);font-size:13px}
+  tbody tr:last-child td{border-bottom:none}
+  tbody tr{cursor:pointer;transition:background .1s}
+  tbody tr:hover{background:#f8f9fc}
+  tbody tr.sel{background:var(--brand-soft);box-shadow:inset 3px 0 0 var(--brand)}
+  td.num{text-align:right}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 10px;
+    border-radius:20px;border:1px solid transparent;white-space:nowrap}
+  .chip .cd{width:6px;height:6px;border-radius:50%;background:currentColor}
+  .chip.hi{color:var(--hi);background:var(--hi-bg);border-color:var(--hi-br)}
+  .chip.md{color:var(--md);background:var(--md-bg);border-color:var(--md-br)}
+  .chip.lo{color:var(--lo);background:var(--lo-bg);border-color:var(--lo-br)}
+  .softcell{color:var(--faint)}
+
+  /* Empty / loading states */
+  .empty{padding:56px 24px;text-align:center;color:var(--muted)}
+  .empty .art{width:56px;height:56px;margin:0 auto 14px;border-radius:14px;background:var(--surface-2);
+    border:1px solid var(--border);display:flex;align-items:center;justify-content:center}
+  .empty .art svg{stroke:var(--faint)}
+  .empty .t{font-weight:600;color:var(--ink-2);font-size:14px}
+  .empty .s{font-size:12.5px;margin-top:4px}
+  .skl{height:14px;border-radius:6px;background:linear-gradient(90deg,#eef1f5 25%,#f6f8fb 37%,#eef1f5 63%);
+    background-size:400% 100%;animation:sh 1.3s infinite}
+  @keyframes sh{0%{background-position:100% 0}100%{background-position:-100% 0}}
+
+  /* Report */
+  .rhead{display:flex;gap:22px;align-items:center;flex-wrap:wrap}
+  .donut{position:relative;width:130px;height:130px;border-radius:50%;flex-shrink:0}
+  .donut .hole{position:absolute;inset:13px;background:var(--surface);border-radius:50%;
+    display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .donut .hole .p{font-size:30px;font-weight:800;letter-spacing:-1px;line-height:1}
+  .donut .hole .l{font-size:10px;text-transform:uppercase;letter-spacing:.6px;color:var(--muted);margin-top:3px}
+  .rmeta .rid{font-size:19px;font-weight:750;letter-spacing:-.3px}
+  .rmeta .rsub{font-size:13px;color:var(--muted);margin-top:5px;line-height:1.8}
+  .sevpill{display:inline-flex;align-items:center;gap:7px;font-size:12px;font-weight:700;
+    padding:4px 11px;border-radius:20px;margin-top:10px;border:1px solid}
+
+  .facts{display:grid;grid-template-columns:1fr 1fr;gap:10px 20px;margin:20px 0 4px;
+    padding:16px 0;border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+  .facts .f .k{font-size:11px;text-transform:uppercase;letter-spacing:.5px;color:var(--muted)}
+  .facts .f .v{font-size:14px;font-weight:600;margin-top:3px}
+  .badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 8px;border-radius:6px;border:1px solid;margin-left:7px;vertical-align:middle}
+  .badge.ok{color:var(--lo);background:var(--lo-bg);border-color:var(--lo-br)}
+  .badge.warn{color:var(--md);background:var(--md-bg);border-color:var(--md-br)}
+
+  .slabel{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.7px;color:var(--muted);margin:22px 0 12px}
+
+  /* Evidence timeline */
+  .tl{position:relative;padding-left:26px}
+  .tl::before{content:"";position:absolute;left:8px;top:6px;bottom:6px;width:2px;background:var(--border)}
+  .tl .node{position:relative;margin-bottom:14px}
+  .tl .node::before{content:"";position:absolute;left:-22px;top:4px;width:12px;height:12px;border-radius:50%;
+    background:var(--surface);border:2.5px solid var(--brand)}
+  .tl .node .step{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--brand)}
+  .tl .node .txt{font-size:13px;color:var(--ink-2);margin-top:3px}
+  .tl .node .meter{height:5px;border-radius:3px;background:var(--track);margin-top:8px;max-width:220px;overflow:hidden}
+  .tl .node .meter i{display:block;height:100%;background:linear-gradient(90deg,var(--brand),var(--brand-2))}
+
+  .narrative{white-space:pre-wrap;font-size:13px;color:var(--ink-2);line-height:1.7;
+    background:var(--surface-2);border:1px solid var(--border);border-radius:11px;padding:16px 18px}
+  .rec{margin-top:16px;padding:14px 18px;border-radius:11px;font-weight:650;font-size:13.5px;
+    border:1px solid;display:flex;align-items:center;gap:10px}
+  .rec .rk{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;opacity:.8}
+  .similar{font-size:12.5px;color:var(--muted);margin-top:14px}
+  .similar b{color:var(--ink-2)}
+
+  .toast{position:fixed;bottom:24px;right:24px;background:var(--ink);color:#fff;padding:13px 18px;
+    border-radius:11px;font-size:13px;box-shadow:var(--sh-lg);display:flex;align-items:center;gap:10px;
+    opacity:0;transform:translateY(10px);transition:.24s;pointer-events:none;max-width:380px;z-index:60}
+  .toast.show{opacity:1;transform:none}
+  .toast .sp{width:8px;height:8px;border-radius:50%;background:var(--brand-2)}
+
+  @media(max-width:1180px){ .grid{grid-template-columns:1fr} .kpis{grid-template-columns:repeat(2,1fr)} }
+  @media(max-width:820px){ .app{grid-template-columns:1fr} .side{position:static;height:auto;flex-direction:row;flex-wrap:wrap;align-items:center} .side-foot,.nav-lbl{display:none} }
+</style>
+</head>
+<body>
+<div class="app">
+  <!-- SIDEBAR -->
+  <aside class="side">
+    <div class="logo">
+      <div class="mk">FI</div>
+      <div class="t">Fraud Investigation<span>Plataforma de análise de risco</span></div>
+    </div>
+
+    <div class="nav-lbl">Base de dados</div>
+    <div class="ds-pick"><select id="dataset"></select></div>
+
+    <div class="nav-lbl">Navegação</div>
+    <nav class="nav">
+      <a class="active"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 3v18h18"/><path d="M7 14l4-4 3 3 5-6"/></svg> Fila de risco</a>
+      <a onclick="document.getElementById('drop').scrollIntoView({behavior:'smooth'})"><svg class="ic" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v13"/></svg> Importar dados</a>
+    </nav>
+
+    <div class="side-foot">
+      <div class="stat-line"><span class="dot" id="dot"></span><span id="statusTxt">verificando…</span></div>
+      <div class="stat-line" style="color:var(--side-muted)">Cada transação passa por 6 etapas de verificação.</div>
+    </div>
+  </aside>
+
+  <!-- MAIN -->
+  <main class="main">
+    <div class="head">
+      <div>
+        <h1>Fila de investigação</h1>
+        <div class="crumb" id="crumb">Transações priorizadas por probabilidade de fraude</div>
+      </div>
+      <div class="actions">
+        <a class="btn" href="/api/template.csv" download>Modelo de importação</a>
+        <button class="btn primary" id="reload">Recarregar</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpis" id="kpis">
+      <div class="kpi"><span class="accent" style="background:var(--brand)"></span><div class="lbl">Transações analisadas</div><div class="val skl" style="width:70%">&nbsp;</div></div>
+      <div class="kpi"><span class="accent" style="background:var(--hi)"></span><div class="lbl">Suspeitas graves</div><div class="val skl" style="width:50%">&nbsp;</div></div>
+      <div class="kpi"><span class="accent" style="background:var(--md)"></span><div class="lbl">Para revisar</div><div class="val skl" style="width:50%">&nbsp;</div></div>
+      <div class="kpi"><span class="accent" style="background:var(--lo)"></span><div class="lbl">Valor em risco</div><div class="val skl" style="width:80%">&nbsp;</div></div>
+    </div>
+
+    <div class="grid">
+      <!-- QUEUE -->
+      <section class="card">
+        <div class="ch"><h2>Transações priorizadas</h2>
+          <span class="m"><label style="margin-right:6px">Exibir</label>
+            <select id="topn" style="border:1px solid var(--border-2);border-radius:7px;padding:4px 8px;font:inherit;font-size:12px">
+              <option>15</option><option selected>25</option><option>50</option><option>100</option>
+            </select></span>
+        </div>
+        <div class="twrap">
+          <table>
+            <thead><tr><th>Transação</th><th>Cliente</th><th class="num">Valor</th><th>Categoria</th><th>Risco</th><th>Situação real</th></tr></thead>
+            <tbody id="rows"></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- REPORT / UPLOAD -->
+      <div>
+        <section class="card" style="margin-bottom:18px">
+          <div class="ch"><h2>Importar transações</h2></div>
+          <div class="cb">
+            <div class="drop" id="drop">
+              <div class="ico"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="M7 10l5-5 5 5"/><path d="M12 5v13"/></svg></div>
+              <div class="lead">Arraste sua planilha aqui ou clique para escolher</div>
+              <div class="sub">Analisamos cada transação e mostramos as mais suspeitas.</div>
+              <input type="file" id="file" accept=".csv" hidden>
+            </div>
+            <div class="schema">
+              A planilha deve ter uma linha por transação, com informações como
+              valor, cliente, local e dispositivo.
+              <a class="lnk" href="/api/template.csv" download>Baixe um modelo pronto</a>
+              e preencha com seus dados.
+            </div>
+          </div>
+        </section>
+
+        <section class="card">
+          <div class="ch"><h2>Relatório de investigação</h2><span class="m" id="rptMeta"></span></div>
+          <div class="cb" id="report">
+            <div class="empty">
+              <div class="art"><svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
+              <div class="t">Nenhuma transação selecionada</div>
+              <div class="s">Escolha um item na fila para gerar o relatório de investigação.</div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div class="toast" id="toast"><span class="sp"></span><span id="toastMsg"></span></div>
+
+<script>
+const $ = s => document.querySelector(s);
+let currentDS = "default", selectedRow = null;
+
+// Tradução amigável (nada de termos técnicos na tela)
+const MOTIVE = {
+  high_amount:"Valor fora do padrão", new_device:"Dispositivo novo",
+  impossible_travel:"Localização impossível", velocity_burst:"Várias compras em segundos",
+  card_testing:"Teste de cartão", account_takeover:"Conta invadida",
+  risky_merchant:"Categoria de risco", none:"Compra normal",
+  fraude_confirmada:"Fraude confirmada", identity_fraud:"Roubo de identidade",
+  indeterminado:"Não identificado", desconhecido:"Não identificado"
+};
+const STEP = {
+  customer_history:"Histórico do cliente", device:"Dispositivo", location:"Localização",
+  merchant:"Estabelecimento", behavior:"Comportamento", similar_cases:"Casos parecidos"
+};
+const motiveLabel = p => MOTIVE[p] || (p||"").replace(/_/g," ");
+const stepLabel   = s => STEP[s] || (s||"").replace(/_/g," ");
+// substitui códigos técnicos que apareçam dentro de frases
+const RAW=/high_amount|new_device|impossible_travel|velocity_burst|card_testing|account_takeover|risky_merchant/g;
+const humanize = t => (t||"").replace(RAW, m=>MOTIVE[m]);
+
+const fmtBRL = v => "R$ " + Number(v).toLocaleString("pt-BR",{minimumFractionDigits:2,maximumFractionDigits:2});
+const fmtK = v => v>=1000 ? (v/1000).toLocaleString("pt-BR",{maximumFractionDigits:1})+" mil" : v;
+const sev = r => r>=0.7?"hi":r>=0.4?"md":"lo";
+const sevColor = r => r>=0.7?"var(--hi)":r>=0.4?"var(--md)":"var(--lo)";
+const sevBg = r => r>=0.7?"var(--hi-bg)":r>=0.4?"var(--md-bg)":"var(--lo-bg)";
+const sevBr = r => r>=0.7?"var(--hi-br)":r>=0.4?"var(--md-br)":"var(--lo-br)";
+const sevLabel = r => r>=0.7?"Alto":r>=0.4?"Médio":"Baixo";
+
+let tt; function toast(m){ $("#toastMsg").textContent=m; $("#toast").classList.add("show");
+  clearTimeout(tt); tt=setTimeout(()=>$("#toast").classList.remove("show"),3800); }
+
+async function jget(u){ const r=await fetch(u); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+
+async function loadDatasets(){
+  const ds=await jget("/api/datasets"); const sel=$("#dataset"); sel.innerHTML="";
+  ds.forEach(d=>{ const o=document.createElement("option"); o.value=d.id;
+    o.textContent=`${d.name} · ${d.transactions.toLocaleString("pt-BR")}`; sel.appendChild(o); });
+  if(!ds.find(x=>x.id===currentDS)) currentDS=ds[0]?.id||"default";
+  sel.value=currentDS;
+}
+
+async function loadStats(){
+  try{
+    const s=await jget(`/api/datasets/${currentDS}/stats`);
+    const cards=[
+      {v:s.total.toLocaleString("pt-BR"), sub: s.labeled? `${s.known_frauds} fraudes já confirmadas` : "sem confirmação prévia"},
+      {v:s.high_risk.toLocaleString("pt-BR"), sub:`recomendamos bloquear`},
+      {v:s.med_risk.toLocaleString("pt-BR"), sub:`recomendamos revisar`},
+      {v:fmtBRL(s.exposed_amount), sub:`total que pode ser perdido`},
+    ];
+    $("#kpis").querySelectorAll(".kpi").forEach((el,i)=>{
+      const val=el.querySelector(".val"); val.className="val"; val.textContent=cards[i].v;
+      let sub=el.querySelector(".sub"); if(!sub){sub=document.createElement("div");sub.className="sub";el.appendChild(sub);}
+      sub.textContent=cards[i].sub;
+    });
+    $("#crumb").textContent = s.labeled
+      ? `${s.total.toLocaleString("pt-BR")} transações analisadas · ${s.known_frauds} fraudes já confirmadas`
+      : `${s.total.toLocaleString("pt-BR")} transações analisadas`;
+  }catch(e){}
+}
+
+function skeletonRows(){ let h=""; for(let i=0;i<8;i++)
+  h+=`<tr><td colspan="6"><div class="skl" style="width:${60+Math.random()*35}%">&nbsp;</div></td></tr>`;
+  $("#rows").innerHTML=h; }
+
+async function loadQueue(){
+  const n=$("#topn").value||25; skeletonRows();
+  try{
+    const rows=await jget(`/api/datasets/${currentDS}/top?n=${n}`);
+    const tb=$("#rows");
+    if(!rows.length){ tb.innerHTML=`<tr><td colspan="6" class="empty">Nenhum registro.</td></tr>`; return; }
+    tb.innerHTML="";
+    rows.forEach(r=>{
+      const labeled=r.hasOwnProperty("is_fraud");
+      const real=labeled?(r.is_fraud?motiveLabel(r.fraud_pattern):"Compra normal"):"—";
+      const tr=document.createElement("tr");
+      tr.innerHTML=`<td class="tnum" style="font-weight:600">#${r.transaction_id}</td>
+        <td class="tnum">${r.customer_id}</td>
+        <td class="num tnum">${fmtBRL(r.amount)}</td>
+        <td>${r.merchant_category}</td>
+        <td><span class="chip ${sev(r.risk)}"><span class="cd"></span>${(r.risk*100).toFixed(0)}%</span></td>
+        <td class="${labeled?'':'softcell'}">${real}</td>`;
+      tr.onclick=()=>{ if(selectedRow)selectedRow.classList.remove("sel"); tr.classList.add("sel");
+        selectedRow=tr; investigate(r.transaction_id); };
+      tb.appendChild(tr);
+    });
+  }catch(e){ $("#rows").innerHTML=`<tr><td colspan="6" class="empty">Falha ao carregar.</td></tr>`; }
+}
+
+async function investigate(tid){
+  const box=$("#report"); $("#rptMeta").textContent="";
+  box.innerHTML=`<div class="empty"><div class="skl" style="width:60%;height:20px;margin:0 auto 14px"></div><div class="s">Executando cadeia de investigação para #${tid}…</div></div>`;
+  try{
+    const r=await jget(`/api/datasets/${currentDS}/investigate/${tid}`);
+    const p=r.fraud_probability, pc=(p*100).toFixed(0), col=sevColor(p);
+    $("#rptMeta").textContent="";
+
+    const tl=r.evidences.map(e=>`
+      <div class="node">
+        <div class="step">${stepLabel(e.step)}</div>
+        <div class="txt">${humanize(e.text)}</div>
+        <div class="meter"><i style="width:${(e.signal*100).toFixed(0)}%"></i></div>
+      </div>`).join("");
+
+    const motive = r.true_pattern
+      ? `<div class="f"><div class="k">Situação real</div><div class="v">${motiveLabel(r.true_pattern)}<span class="badge ${r.correct_motive?'ok':'warn'}">${r.correct_motive?'confirmado':'divergente'}</span></div></div>`
+      : `<div class="f"><div class="k">Situação real</div><div class="v softcell">não informada</div></div>`;
+
+    const sim=r.similar_cases?.length
+      ? `<div class="similar"><b>Fraudes parecidas já vistas:</b> ${r.similar_cases.slice(0,5).map(c=>'#'+c.transaction_id).join(', ')}</div>`:"";
+
+    box.innerHTML=`
+      <div class="rhead">
+        <div class="donut" style="background:conic-gradient(${col} ${pc*3.6}deg, var(--track) 0)">
+          <div class="hole"><div class="p" style="color:${col}">${pc}%</div><div class="l">probabilidade</div></div>
+        </div>
+        <div class="rmeta">
+          <div class="rid">Transação #${r.transaction_id}</div>
+          <div class="rsub">Cliente #${r.customer_id}</div>
+          <div class="sevpill" style="color:${col};background:${sevBg(p)};border-color:${sevBr(p)}"><span class="cd" style="width:7px;height:7px;border-radius:50%;background:currentColor"></span>Risco ${sevLabel(p)}</div>
+        </div>
+      </div>
+
+      <div class="facts">
+        <div class="f"><div class="k">Motivo identificado</div><div class="v">${motiveLabel(r.inferred_pattern)}</div></div>
+        ${motive}
+      </div>
+
+      <div class="slabel">O que levantou a suspeita</div>
+      <div class="tl">${tl}</div>
+      ${sim}
+
+      <div class="slabel">Resumo da investigação</div>
+      <div class="narrative">${humanize(r.narrative)}</div>
+
+      <div class="rec" style="color:${col};background:${sevBg(p)};border-color:${sevBr(p)}">
+        <span class="rk">Recomendação</span> ${r.recommendation}</div>`;
+  }catch(e){ box.innerHTML=`<div class="empty"><div class="t">Não foi possível gerar o relatório</div></div>`; }
+}
+
+// Upload
+const drop=$("#drop"), file=$("#file");
+drop.onclick=()=>file.click();
+["dragover","dragenter"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.add("drag");}));
+["dragleave","drop"].forEach(ev=>drop.addEventListener(ev,e=>{e.preventDefault();drop.classList.remove("drag");}));
+drop.addEventListener("drop",e=>{ if(e.dataTransfer.files[0])upload(e.dataTransfer.files[0]); });
+file.onchange=()=>{ if(file.files[0])upload(file.files[0]); };
+async function upload(f){
+  if(!f.name.toLowerCase().endsWith(".csv")){ toast("O arquivo precisa ser .csv"); return; }
+  toast("Processando "+f.name+"…");
+  const fd=new FormData(); fd.append("file",f);
+  const resp=await fetch("/api/upload",{method:"POST",body:fd});
+  if(!resp.ok){ const e=await resp.json().catch(()=>({})); toast("Erro: "+(e.detail||"falha")); return; }
+  const d=await resp.json();
+  toast(`Importado: ${d.transactions} transações · ${d.high_risk} de alto risco`);
+  await loadDatasets(); currentDS=d.dataset_id; $("#dataset").value=d.dataset_id; refresh();
+}
+
+function refresh(){ loadStats(); loadQueue(); }
+$("#dataset").onchange=e=>{ currentDS=e.target.value; refresh(); };
+$("#topn").onchange=loadQueue;
+$("#reload").onclick=refresh;
+
+(async()=>{
+  try{ await jget("/health"); $("#dot").classList.add("on"); $("#statusTxt").textContent="Serviço operacional"; }
+  catch{ $("#dot").classList.add("off"); $("#statusTxt").textContent="Serviço indisponível"; }
+  await loadDatasets(); refresh();
+})();
+</script>
+</body>
+</html>
