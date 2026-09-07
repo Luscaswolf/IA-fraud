@@ -73,12 +73,17 @@ src/
   config.py         parâmetros, catálogos e lista de padrões de fraude
   generator.py      gera clientes + 100k transações com fraudes rotuladas
   features.py       engenharia de features contextuais (por cliente/tempo)
+  feature_store.py  ESTADO online por cliente (janela deslizante) p/ scoring em tempo real
   model.py          modelo de detecção (RandomForest) -> risk score 0-100%
   investigator.py   AGENTE: percorre a cadeia e coleta evidências ponderadas
+  calibration.py    calibra os limiares de decisão por CUSTO (fraude × fricção)
+  backtest.py       backtest temporal (treino=passado, teste=futuro) + dataset real
+  feedback.py       feedback loop: decisão do analista -> rótulo para re-treino
   report.py         renderiza o laudo (texto / rich)
   narrative.py      camada LLM: redige o laudo em linguagem natural
 main.py             CLI
-api.py              API FastAPI (POST /investigate/{id})
+api.py              API FastAPI (POST /score em tempo real, POST /api/feedback, ...)
+tests/              pytest (features, feature store, agente, calibração, API, backtest)
 ```
 
 O agente combina o **score do ML** com o **raciocínio sobre evidências**:
@@ -99,6 +104,61 @@ python main.py demo 5            # investiga as 5 transações de maior risco
 python main.py investigate 102914  # investiga uma transação específica
 python main.py narrate 102914    # laudo em linguagem natural (LLM/template)
 python main.py evaluate 500      # mede se o agente acerta o MOTIVO da fraude
+python main.py backtest          # backtest temporal no dataset sintético
+python main.py backtest data/real_creditcard.csv   # idem, em dados reais (Sparkov)
+python main.py calibrate         # limiares de decisão ótimos por custo -> data/thresholds.json
+python main.py retrain           # re-treina incorporando o feedback dos analistas
+```
+
+### Scoring em tempo real (`POST /score`)
+
+Além do modo batch, a API pontua **uma transação** contra o estado do cliente
+(feature store online) e devolve `aprovar` / `revisar` / `bloquear` em ~50 ms:
+
+```bash
+curl -X POST http://127.0.0.1:8000/score -H 'content-type: application/json' -d '{
+  "customer_id": 771001, "amount": 1200.00, "merchant_category": "cripto_exchange",
+  "device_id": "dev_x", "city": "Miami", "lat": 25.76, "lon": -80.19
+}'
+```
+
+O estado (média de gasto, dispositivos, localização, janela de velocity) é
+mantido em memória por cliente e é **incrementado a cada chamada**
+(`update_state: false` desliga). Hoje o store é um `dict`; a interface
+`snapshot` / `update` foi desenhada para trocar por Redis sem mexer no resto.
+
+### Feedback loop (`POST /api/feedback`)
+
+```bash
+curl -X POST http://127.0.0.1:8000/api/feedback -H 'content-type: application/json' \
+  -d '{"transaction_id": 102914, "label": "fraud"}'   # ou "legit"
+```
+
+Grava em `data/feedback.jsonl`. `python main.py retrain` reescreve os rótulos
+das transações com feedback e retreina o modelo.
+
+### Limiares calibrados por custo
+
+`python main.py calibrate` varre uma grade de limiares sobre o dataset rotulado
+e escolhe o par `(revisar, bloquear)` que **minimiza o custo esperado por
+transação**, dado o custo de deixar passar uma fraude (valor), o de bloquear um
+cliente legítimo (fricção) e o de uma revisão manual. O resultado vai para
+`data/thresholds.json` e é consumido automaticamente pelo `narrate` / `/score`.
+
+### Autenticação e rate limit (opcionais)
+
+```bash
+export FRAUD_API_KEY=troque-isto     # passa a exigir header  x-api-key  em /api e /score
+export FRAUD_RATE_LIMIT=120          # req/min por cliente (default 120; 0 desliga)
+```
+
+Uploads passam a ser **persistidos** em `data/uploads/` e recarregados no restart.
+
+### Testes
+
+```bash
+pip install -r requirements.txt
+pytest -q
 ```
 
 ### Camada LLM (opcional)
@@ -224,8 +284,22 @@ Acerto do motivo: 99.8%
 
 ## Próximos passos
 
-- Camada LLM opcional para narrar o laudo em linguagem natural (o
-  `report.as_dict()` já entrega as evidências estruturadas prontas para prompt).
-- Substituir o gerador por dataset real e remapear `features.py`.
-- Endpoint FastAPI: `POST /investigate/{transaction_id}` -> JSON do laudo.
-- Feedback loop: decisões dos analistas realimentam o modelo.
+Feito nesta iteração:
+
+- [x] **Scoring em tempo real** (`POST /score`) com feature store online por cliente
+  (`src/feature_store.py`) — decisão em ~50 ms, sem varrer o CSV.
+- [x] **Janela deslizante** de transações por cliente para velocity / impossible-travel.
+- [x] **Backtest temporal** (`main.py backtest`) + **métricas em dataset real** (Sparkov):
+  ROC-AUC ~0.985 / PR-AUC ~0.64 no holdout futuro (vs. 0.999 do sintético).
+- [x] **Feedback loop** (`POST /api/feedback` + `main.py retrain`).
+- [x] **Limiares calibrados por custo** (`main.py calibrate` -> `data/thresholds.json`).
+- [x] **Autenticação por API key + rate limit + persistência de uploads**.
+- [x] **Suíte de testes** (`pytest`, `tests/`).
+
+Ainda em aberto:
+
+- Trocar o `FeatureStore` em memória por Redis/Cassandra (interface já pronta).
+- Persistir o estado do store entre reinícios (hoje só o histórico via `bootstrap`).
+- Consumir eventos (Kafka) para atualizar o store fora do caminho da requisição.
+- Modelo mais leve / ONNX para derrubar a latência de ~50 ms para 1 dígito.
+- Re-treino agendado e monitoramento de drift.

@@ -2,5 +2,9 @@ __pycache__/
 *.pyc
 data/*.csv
 data/*.joblib
+data/thresholds.json
+data/feedback.jsonl
+data/uploads/
 .venv/
 venv/
+.pytest_cache/

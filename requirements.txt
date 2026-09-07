@@ -6,4 +6,6 @@ joblib>=1.3
 rich>=13.0
 fastapi>=0.110
 uvicorn>=0.29
+httpx>=0.27          # fastapi.testclient (testes)
+pytest>=8.0
 # opcionais (camada LLM): openai>=1.0  /  anthropic>=0.25
