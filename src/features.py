@@ -19,6 +19,13 @@ def _haversine_series(lat1, lon1, lat2, lon2):
     return 2 * r * np.arcsin(np.sqrt(a))
 
 
+def haversine(lat1: float, lon1: float, lat2: float, lon2: float) -> float:
+    """Distancia em km entre dois pontos (versao escalar, usada no scoring online)."""
+    return float(_haversine_series(
+        np.array([lat1]), np.array([lon1]), np.array([lat2]), np.array([lon2])
+    )[0])
+
+
 FEATURE_COLS = [
     "amount",
     "amount_ratio",       # valor / media do cliente

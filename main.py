@@ -8,6 +8,9 @@ Uso:
   python main.py narrate <id>      # laudo em linguagem natural (LLM/template)
   python main.py demo [N]          # investiga as N transacoes de maior risco
   python main.py evaluate [N]      # mede se o agente acerta o MOTIVO da fraude
+  python main.py backtest [csv]    # backtest temporal (treino=passado, teste=futuro)
+  python main.py calibrate         # calibra limiares de decisao por custo
+  python main.py retrain           # re-treina incorporando feedback dos analistas
 """
 from __future__ import annotations
 
@@ -108,6 +111,38 @@ def cmd_evaluate(n=300):
         print(f"{pat:22s} {h}/{t} = {h/t:.0%}")
 
 
+def cmd_backtest(csv_path: str | None = None):
+    from src import backtest
+    backtest.print_report(backtest.run(csv_path))
+
+
+def cmd_calibrate(csv_path: str | None = None):
+    from src import calibration
+    scored = pd.read_csv(csv_path) if csv_path else _load_scored()
+    res = calibration.calibrate(scored)
+    calibration.save_thresholds(res)
+    print("\n=== Calibracao de limiares por custo ===")
+    for k, v in res.items():
+        print(f"  {k:28s} {v}")
+    print(f"\n  Limiares salvos em: {calibration.THRESHOLDS_PATH}")
+    print(f"  -> revisar >= {res['review']}   bloquear >= {res['block']}")
+
+
+def cmd_retrain():
+    from src import feedback
+    import joblib
+    txns = pd.read_csv(cfg.TRANSACTIONS_CSV)
+    customers = pd.read_csv(cfg.CUSTOMERS_CSV)
+    feats = build_features(txns, customers)
+    feats, n = feedback.apply_to(feats, dataset="default")
+    print(f"Feedback aplicado a {n} transacao(oes).")
+    clf = model.train(feats)
+    joblib.dump(clf, cfg.MODEL_PATH)
+    feats["risk"] = model.score(clf, feats)
+    feats.to_csv(SCORED_CSV, index=False)
+    print(f"\nModelo re-treinado. Scores atualizados em: {SCORED_CSV}")
+
+
 def main():
     if len(sys.argv) < 2:
         print(__doc__)
@@ -125,6 +160,12 @@ def main():
         cmd_demo(int(sys.argv[2]) if len(sys.argv) > 2 else 5)
     elif cmd == "evaluate":
         cmd_evaluate(int(sys.argv[2]) if len(sys.argv) > 2 else 300)
+    elif cmd == "backtest":
+        cmd_backtest(sys.argv[2] if len(sys.argv) > 2 else None)
+    elif cmd == "calibrate":
+        cmd_calibrate(sys.argv[2] if len(sys.argv) > 2 else None)
+    elif cmd == "retrain":
+        cmd_retrain()
     else:
         print(__doc__)
 

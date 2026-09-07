@@ -122,15 +122,28 @@ class FraudInvestigator:
         if isinstance(row, pd.DataFrame):
             row = row.iloc[0]
 
+        hist = self.by_customer[row["customer_id"]]
+        past = hist[hist["timestamp"] < row["timestamp"]]
+        return self.investigate_row(row, past)
+
+    def investigate_row(self, row: pd.Series, past: pd.DataFrame | None = None) -> Investigation:
+        """
+        Investiga uma linha ja com features calculadas (FEATURE_COLS +
+        transaction_id / customer_id / risk). `past` e o historico do cliente
+        anterior a esta transacao; se ausente, as etapas que dependem de
+        contagem historica usam um DataFrame vazio.
+
+        E o ponto de entrada do scoring ONLINE: o `feature_store` monta a
+        linha e a janela do cliente e chama este metodo.
+        """
+        if past is None:
+            past = self.feats.iloc[0:0]
+
         inv = Investigation(
             transaction_id=int(row["transaction_id"]),
             customer_id=int(row["customer_id"]),
             ml_risk=float(row.get("risk", 0.0)),
         )
-
-        hist = self.by_customer[row["customer_id"]]
-        past = hist[hist["timestamp"] < row["timestamp"]]
-
         self._step_amount(inv, row)
         self._step_device(inv, row, past)
         self._step_location(inv, row, past)

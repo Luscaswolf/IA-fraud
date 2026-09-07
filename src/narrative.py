@@ -42,9 +42,12 @@ _SYSTEM = (
 
 
 def _recommendation(prob: float) -> str:
-    if prob >= 0.7:
+    # limiares calibrados por custo (src/calibration.py); fallback 0.4 / 0.7
+    from .calibration import load_thresholds
+    th = load_thresholds()
+    if prob >= th["block"]:
         return "BLOQUEAR a transacao e acionar o cliente."
-    if prob >= 0.4:
+    if prob >= th["review"]:
         return "REVISAR manualmente antes de liberar."
     return "APROVAR com monitoramento padrao."
 
